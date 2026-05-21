@@ -42,8 +42,8 @@ Deux options pour suivre le workshop :
 | Docker Desktop                               | [docker.com/products/docker-desktop](https://www.docker.com/products/docker-desktop)             |
 | Azure CLI 2.60+                              | [docs.microsoft.com/cli/azure/install-azure-cli](https://learn.microsoft.com/cli/azure/install-azure-cli) |
 | Bicep CLI                                    | `az bicep install`                                                                               |
-| GitHub CLI (`gh`) 2.65+                      | [cli.github.com](https://cli.github.com/) — `winget install GitHub.cli` ou `brew install gh`     |
-| GitHub Copilot CLI                           | **Intégré nativement** dans `gh` récent (commande `gh copilot`). Plus besoin d'installer une extension. |
+| GitHub CLI (`gh`) 2.50+                      | [cli.github.com](https://cli.github.com/) — `winget install GitHub.cli` ou `brew install gh`     |
+| GitHub Copilot CLI extension                 | `gh extension install github/gh-copilot` (installée après `gh auth login`)                       |
 
 > [!IMPORTANT]
 > **Toujours activer le venv Python avant tout `pip install`.**
@@ -85,7 +85,7 @@ Connecte-toi à ton compte GitHub dans VS Code (icône user en bas à gauche) po
 
 ### Configurer GitHub CLI + Copilot CLI
 
-GitHub CLI (`gh`) sera utilisé tout au long du workshop pour scripter le travail sur GitHub (issues, PRs, secrets, workflow runs…), et la commande **native** `gh copilot` apporte Copilot **dans le terminal**.
+GitHub CLI (`gh`) sera utilisé tout au long du workshop pour scripter le travail sur GitHub (issues, PRs, secrets, workflow runs…), et son extension `gh copilot` apporte Copilot **dans le terminal**.
 
 ```pwsh
 # Auth GitHub (ouvre un navigateur)
@@ -94,25 +94,20 @@ gh auth login
 # Vérifier
 gh auth status
 
-# Smoke test — mode non-interactif (flag -p / --prompt)
-gh copilot -p "list all containers including stopped ones"
+# Installer l'extension Copilot CLI
+gh extension install github/gh-copilot
 
-# Mode interactif (chat dans le terminal)
-gh copilot -i
-
-# Aide complète
-gh copilot --help
+# Smoke test
+gh copilot suggest "list all containers including stopped ones"
+gh copilot explain "git rebase -i HEAD~3"
 ```
 
-> [!NOTE]
-> Depuis fin 2024, `gh copilot` est **intégré nativement** à GitHub CLI. L'ancienne extension `github/gh-copilot` (avec les sous-commandes `suggest` et `explain`) est dépréciée. Si tu vois encore l'erreur `"copilot" matches the name of a built-in command`, c'est que tu as la version native — utilise simplement la nouvelle syntaxe ci-dessus.
-
 > [!TIP]
-> Pour aller plus vite, crée un alias PowerShell dans ton `$PROFILE` :
+> `gh copilot alias` ajoute deux alias pratiques dans ton shell : `ghcs` (suggest) et `ghce` (explain). Sur PowerShell :
 >
 > ```pwsh
-> function ghc { gh copilot -p $args }
-> # Usage : ghc "kill the process using port 8000"
+> gh copilot alias -- pwsh | Out-String | Invoke-Expression
+> # Ajoute la ligne ci-dessus à $PROFILE pour que ce soit permanent
 > ```
 
 ---
@@ -187,7 +182,6 @@ Essaie aussi les expressions régulières — Copilot est très bon dessus :
 # function `validate_email(s: str) -> bool` (we'll need it later for sharing)
 ```
 
-
 ## Étape 4 — Couche de stockage
 
 Crée `app/storage.py` avec une **abstraction** + une impl JSON locale :
@@ -238,8 +232,7 @@ Ouvre [http://localhost:8000](http://localhost:8000) → tu devrais voir le cale
 
 C'est l'évolution de la complétion : quand tu modifies du code, Copilot anticipe la prochaine modif **ailleurs** dans le code.
 
-Dans `app/models.py`, ajoute un champ `
-` au modèle `Meal`. Regarde Copilot proposer de propager le champ dans `routes.py`, `static/app.js`, voire les tests.
+Dans `app/models.py`, ajoute un champ `calories: int | None = None` au modèle `Meal`. Regarde Copilot proposer de propager le champ dans `routes.py`, `static/app.js`, voire les tests.
 
 ![Next Edit Suggestion](https://learn.microsoft.com/en-us/visualstudio/version-16.0/media/vs-2019/edit-suggestion.png)
 
@@ -269,41 +262,38 @@ Tape un titre de section vide → Copilot remplit. Itère.
 
 ## Side Quest #3 — Copilot dans le terminal (`gh copilot`)
 
-Copilot ne vit pas que dans VS Code. Avec la commande native `gh copilot` (intégrée à GitHub CLI), tu as Copilot **directement dans ton shell**.
+Copilot ne vit pas que dans VS Code. Avec l'extension `gh copilot` (installée dans les pré-requis), tu as Copilot **directement dans ton shell**.
 
-### Mode non-interactif (`-p` / `--prompt`) — générer ou expliquer
+### `suggest` — générer une commande
 
 ```pwsh
-# Générer une commande
-gh copilot -p "create a python venv, activate it and install requirements.txt"
-gh copilot -p "undo my last commit but keep the changes staged"
-gh copilot -p "list my open pull requests across all my repos"
-
-# Expliquer une commande (formule simplement la question)
-gh copilot -p "explain: docker run --rm -it -v `${PWD}:/app -w /app python:3.11-slim bash"
-gh copilot -p "explain: az containerapp update -g rg-meal-calendar-dev -n meal-calendar --image acrxxxx.azurecr.io/meal-calendar:latest"
-gh copilot -p "explain: git rebase -i HEAD~3"
+gh copilot suggest "create a python venv, activate it and install requirements.txt"
+gh copilot suggest -t git "undo my last commit but keep the changes staged"
+gh copilot suggest -t gh "list my open pull requests across all my repos"
 ```
 
-À la fin, Copilot te propose d'**exécuter**, **copier** ou **réviser** la commande.
+`-t` filtre le type : `shell`, `gh`, `git`. À la fin, tu peux :
 
-### Mode interactif (`-i`) — chat continu
+- **Copier** la commande dans le presse-papier
+- **Exécuter** directement
+- **Réviser** en demandant une variante
 
-Idéal pour itérer ou enchaîner plusieurs questions sans relancer `gh copilot` à chaque fois :
+### `explain` — décrypter une ligne de commande
+
+Idéal quand tu copies une commande d'un tuto sans la comprendre.
 
 ```pwsh
-gh copilot -i
+gh copilot explain "docker run --rm -it -v `${PWD}:/app -w /app python:3.11-slim bash"
+gh copilot explain "az containerapp update -g rg-meal-calendar-dev -n meal-calendar --image acrxxxx.azurecr.io/meal-calendar:latest"
 ```
 
-Tu te retrouves dans un REPL où tu peux dialoguer : générer, expliquer, demander une variante, etc. `exit` pour quitter.
+### Alias `ghcs` / `ghce`
 
-### Alias PowerShell
-
-Si tu as ajouté le `function ghc { gh copilot -p $args }` dans ton `$PROFILE` (cf. pré-requis) :
+Si tu as configuré les alias (cf. pré-requis), tu peux taper directement :
 
 ```pwsh
-ghc "kill the process using port 8000"
-ghc "explain: git reflog"
+ghcs "kill the process using port 8000"
+ghce "git reflog"
 ```
 
 > [!TIP]
@@ -622,7 +612,7 @@ Copilot mappe l'opération sur l'outil MCP et te demande l'autorisation. Accepte
 > **Alternative `gh` CLI** : tu peux aussi créer l'issue depuis le terminal sans MCP. Demande à Copilot CLI de te générer la commande :
 >
 > ```pwsh
-> gh copilot -p "create a github issue titled 'Shopping list feature' with a body loaded from issue.md and labels 'feature' and 'good-first-issue'"
+> gh copilot suggest "create a github issue titled 'Shopping list feature' with a body loaded from issue.md and labels 'feature' and 'good-first-issue'"
 > ```
 >
 > Puis exécute le résultat, par exemple :
@@ -942,9 +932,7 @@ Vérifie que `https://<fqdn>` sert ta dernière version.
 Si un job échoue, récupère directement les logs via `gh` et passe-les à Copilot CLI :
 
 ```pwsh
-# Capturer les logs dans une variable puis les passer en prompt
-$logs = gh run view --log-failed | Out-String
-gh copilot -p "explain these GitHub Actions failure logs and how to fix:`n$logs"
+gh run view --log-failed | gh copilot explain --stdin
 ```
 
 Ou colle-les dans Copilot Chat :
@@ -1294,7 +1282,7 @@ Quand je clique sur une cellule du calendrier, le modal s'ouvre mais déborde su
 3. Joindre **le bon contexte** : `#file`, `#selection`, `#changes`, `#problems`, `#fetch`.
 4. **One-shot / few-shot** pour imposer un style.
 5. Toujours **vérifier les tests** et les diffs avant `Keep`.
-6. Dans le terminal : `gh copilot -p "..."` pour générer/expliquer une commande, `gh copilot -i` pour un chat interactif.
+6. Dans le terminal : `gh copilot suggest` pour générer, `gh copilot explain` pour comprendre avant d'exécuter.
 
 ## Garde-fous
 

@@ -4,12 +4,13 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from .routers import router as meals_router
+from .routes import router as meals_router, shopping_router
 
 app = FastAPI()
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 app.include_router(meals_router)
+app.include_router(shopping_router)
 
 
 @app.get("/")
