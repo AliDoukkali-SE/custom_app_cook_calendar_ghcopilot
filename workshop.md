@@ -42,6 +42,8 @@ Deux options pour suivre le workshop :
 | Docker Desktop                               | [docker.com/products/docker-desktop](https://www.docker.com/products/docker-desktop)             |
 | Azure CLI 2.60+                              | [docs.microsoft.com/cli/azure/install-azure-cli](https://learn.microsoft.com/cli/azure/install-azure-cli) |
 | Bicep CLI                                    | `az bicep install`                                                                               |
+| GitHub CLI (`gh`) 2.65+                      | [cli.github.com](https://cli.github.com/) — `winget install GitHub.cli` ou `brew install gh`     |
+| GitHub Copilot CLI                           | **Intégré nativement** dans `gh` récent (commande `gh copilot`). Plus besoin d'installer une extension. |
 
 > [!IMPORTANT]
 > **Toujours activer le venv Python avant tout `pip install`.**
@@ -80,6 +82,38 @@ Si la conf locale est compliquée, lance un **Codespace** depuis le bouton vert 
 4. [Python extension](https://marketplace.visualstudio.com/items?itemName=ms-python.python)
 
 Connecte-toi à ton compte GitHub dans VS Code (icône user en bas à gauche) pour activer Copilot.
+
+### Configurer GitHub CLI + Copilot CLI
+
+GitHub CLI (`gh`) sera utilisé tout au long du workshop pour scripter le travail sur GitHub (issues, PRs, secrets, workflow runs…), et la commande **native** `gh copilot` apporte Copilot **dans le terminal**.
+
+```pwsh
+# Auth GitHub (ouvre un navigateur)
+gh auth login
+
+# Vérifier
+gh auth status
+
+# Smoke test — mode non-interactif (flag -p / --prompt)
+gh copilot -p "list all containers including stopped ones"
+
+# Mode interactif (chat dans le terminal)
+gh copilot -i
+
+# Aide complète
+gh copilot --help
+```
+
+> [!NOTE]
+> Depuis fin 2024, `gh copilot` est **intégré nativement** à GitHub CLI. L'ancienne extension `github/gh-copilot` (avec les sous-commandes `suggest` et `explain`) est dépréciée. Si tu vois encore l'erreur `"copilot" matches the name of a built-in command`, c'est que tu as la version native — utilise simplement la nouvelle syntaxe ci-dessus.
+
+> [!TIP]
+> Pour aller plus vite, crée un alias PowerShell dans ton `$PROFILE` :
+>
+> ```pwsh
+> function ghc { gh copilot -p $args }
+> # Usage : ghc "kill the process using port 8000"
+> ```
 
 ---
 
@@ -153,6 +187,7 @@ Essaie aussi les expressions régulières — Copilot est très bon dessus :
 # function `validate_email(s: str) -> bool` (we'll need it later for sharing)
 ```
 
+
 ## Étape 4 — Couche de stockage
 
 Crée `app/storage.py` avec une **abstraction** + une impl JSON locale :
@@ -203,7 +238,8 @@ Ouvre [http://localhost:8000](http://localhost:8000) → tu devrais voir le cale
 
 C'est l'évolution de la complétion : quand tu modifies du code, Copilot anticipe la prochaine modif **ailleurs** dans le code.
 
-Dans `app/models.py`, ajoute un champ `calories: int | None = None` au modèle `Meal`. Regarde Copilot proposer de propager le champ dans `routes.py`, `static/app.js`, voire les tests.
+Dans `app/models.py`, ajoute un champ `
+` au modèle `Meal`. Regarde Copilot proposer de propager le champ dans `routes.py`, `static/app.js`, voire les tests.
 
 ![Next Edit Suggestion](https://learn.microsoft.com/en-us/visualstudio/version-16.0/media/vs-2019/edit-suggestion.png)
 
@@ -230,6 +266,48 @@ This documentation is generated with GitHub Copilot to showcase what the tool ca
 ```
 
 Tape un titre de section vide → Copilot remplit. Itère.
+
+## Side Quest #3 — Copilot dans le terminal (`gh copilot`)
+
+Copilot ne vit pas que dans VS Code. Avec la commande native `gh copilot` (intégrée à GitHub CLI), tu as Copilot **directement dans ton shell**.
+
+### Mode non-interactif (`-p` / `--prompt`) — générer ou expliquer
+
+```pwsh
+# Générer une commande
+gh copilot -p "create a python venv, activate it and install requirements.txt"
+gh copilot -p "undo my last commit but keep the changes staged"
+gh copilot -p "list my open pull requests across all my repos"
+
+# Expliquer une commande (formule simplement la question)
+gh copilot -p "explain: docker run --rm -it -v `${PWD}:/app -w /app python:3.11-slim bash"
+gh copilot -p "explain: az containerapp update -g rg-meal-calendar-dev -n meal-calendar --image acrxxxx.azurecr.io/meal-calendar:latest"
+gh copilot -p "explain: git rebase -i HEAD~3"
+```
+
+À la fin, Copilot te propose d'**exécuter**, **copier** ou **réviser** la commande.
+
+### Mode interactif (`-i`) — chat continu
+
+Idéal pour itérer ou enchaîner plusieurs questions sans relancer `gh copilot` à chaque fois :
+
+```pwsh
+gh copilot -i
+```
+
+Tu te retrouves dans un REPL où tu peux dialoguer : générer, expliquer, demander une variante, etc. `exit` pour quitter.
+
+### Alias PowerShell
+
+Si tu as ajouté le `function ghc { gh copilot -p $args }` dans ton `$PROFILE` (cf. pré-requis) :
+
+```pwsh
+ghc "kill the process using port 8000"
+ghc "explain: git reflog"
+```
+
+> [!TIP]
+> Copilot CLI brille pour : `git` velu, `docker`, `kubectl`, `az`, `gh`, `ffmpeg`, `awk`/`sed`, `jq`, `Get-*` PowerShell. Il **ne lance jamais** une commande sans ta confirmation explicite.
 
 ## Big tasks vs small tasks
 
@@ -540,6 +618,20 @@ Crée l'issue sur mon projet GitHub.
 
 Copilot mappe l'opération sur l'outil MCP et te demande l'autorisation. Accepte.
 
+> [!TIP]
+> **Alternative `gh` CLI** : tu peux aussi créer l'issue depuis le terminal sans MCP. Demande à Copilot CLI de te générer la commande :
+>
+> ```pwsh
+> gh copilot -p "create a github issue titled 'Shopping list feature' with a body loaded from issue.md and labels 'feature' and 'good-first-issue'"
+> ```
+>
+> Puis exécute le résultat, par exemple :
+>
+> ```pwsh
+> gh issue create --title "Shopping list feature" --body-file issue.md --label feature --label good-first-issue
+> gh issue list --state open
+> ```
+
 ## Étape 6 — Implémenter la feature avec l'Agent
 
 Crée une branche `feat/shopping-list` :
@@ -575,18 +667,72 @@ Copilot exécute le test pas à pas, prend des captures, corrige tout seul si be
 
 ## Étape 8 — Code Review Copilot sur la PR
 
-Push la branche :
+Push la branche **et crée la PR depuis le terminal** avec `gh` :
 
 ```pwsh
 git push -u origin feat/shopping-list
-```
 
-Crée une Pull Request depuis VS Code ou github.com vers `main`. **Assigne Copilot comme reviewer**.
+# Créer la PR en une commande, sans quitter le terminal
+gh pr create --base main --head feat/shopping-list --fill --reviewer @copilot
+
+# (Optionnel) Ouvrir la PR dans le navigateur
+gh pr view --web
+```
 
 Quelques minutes plus tard, Copilot poste des commentaires de review : best practices, bugs potentiels, vulnérabilités, **scan CodeQL et secret scanning** inclus.
 
+Pour suivre depuis le terminal :
+
+```pwsh
+gh pr status
+gh pr checks
+gh pr view --comments
+```
+
+## Étape 9 — Copilot Autofix sur les alertes CodeQL
+
+> [!NOTE]
+> **Copilot Autofix** (GitHub Advanced Security) génère automatiquement un **patch IA** pour chaque alerte détectée par CodeQL ou d'autres scanners de code, directement dans la PR. Dispo gratuitement sur les repos publics, et via GHAS sur les repos privés.
+
+### Activer Code Scanning + Autofix
+
+Dans `Settings > Code security and analysis` du repo :
+
+- **Code scanning** : activer "Default setup" (CodeQL géré par GitHub) ou "Advanced" si tu veux un workflow custom.
+- **Copilot Autofix** : activer la case `Copilot Autofix for code scanning alerts`.
+
+Ou via `gh` :
+
+```pwsh
+gh api -X PATCH /repos/:owner/:repo/code-scanning/default-setup `
+  -F state=configured -F query_suite=default
+```
+
+### Déclencher une alerte volontaire
+
+Dans une nouvelle branche `chore/trigger-codeql`, ajoute dans `app/routes.py` un code intentionnellement vulnérable (ex. ouverture d'un fichier dont le chemin vient du body sans validation → *path traversal*). Push + PR.
+
+### Observer Autofix au travail
+
+Le workflow CodeQL tourne sur la PR. Dès qu'une alerte est levée, GitHub poste **un commentaire avec un patch suggéré** : explication en langage naturel + diff.
+
+Depuis le terminal :
+
+```pwsh
+gh pr checks
+gh code-scanning alerts list   # via extension `gh-code-scanning` si installée
+```
+
+Deux options :
+
+1. **Commit suggestion** — bouton sur la PR pour appliquer le patch en un clic
+2. **Edit in Codespaces** — ouvrir, tester, puis push manuellement
+
+> [!TIP]
+> Autofix est complémentaire au Code Review : Code Review attrape les problèmes de design/qualité, Autofix se concentre sur les vulnérabilités détectées par CodeQL. Combine les deux dans tes guard rails de PR.
+
 > [!IMPORTANT]
-> **NE MERGE PAS la PR.** On la garde pour les niveaux suivants (Coding Agent au Niveau 7).
+> **NE MERGE PAS la PR de la shopping list.** On la garde pour les niveaux suivants (Coding Agent au Niveau 7). En revanche, tu peux fermer la PR de test Autofix.
 
 ---
 
@@ -753,14 +899,24 @@ et lui assigner le rôle Contributor sur le resource group rg-meal-calendar-dev.
 Affiche les valeurs à mettre dans les secrets GitHub : AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID.
 ```
 
-Exécute. Ajoute les secrets dans `Settings > Secrets and variables > Actions` du repo :
+Exécute. Au lieu de configurer les secrets à la souris dans `Settings > Secrets and variables > Actions`, fais-le **en une commande** avec `gh` :
 
-- `AZURE_CLIENT_ID`
-- `AZURE_TENANT_ID`
-- `AZURE_SUBSCRIPTION_ID`
-- `ACR_NAME`
-- `ACA_NAME=meal-calendar`
-- `RG_NAME=rg-meal-calendar-dev`
+```pwsh
+gh secret set AZURE_CLIENT_ID --body "<client-id>"
+gh secret set AZURE_TENANT_ID --body "<tenant-id>"
+gh secret set AZURE_SUBSCRIPTION_ID --body "<subscription-id>"
+
+# Les valeurs non secrètes vont dans des variables (visibles dans les logs, plus simples à maintenir)
+gh variable set ACR_NAME --body "acrmealcalendarxxxx"
+gh variable set ACA_NAME --body "meal-calendar"
+gh variable set RG_NAME --body "rg-meal-calendar-dev"
+
+# Vérifier
+gh secret list
+gh variable list
+```
+
+Dans tes workflows, référence-les via `${{ secrets.AZURE_CLIENT_ID }}` et `${{ vars.RG_NAME }}`.
 
 > [!IMPORTANT]
 > **OIDC = pas de secret long-lived**. Aucun mot de passe / clé de service principal n'est stocké dans GitHub. C'est la façon recommandée d'authentifier des workflows à Azure depuis 2023.
@@ -770,11 +926,28 @@ Exécute. Ajoute les secrets dans `Settings > Secrets and variables > Actions` d
 Push sur une branche → la PR déclenche CI (ruff + pytest + docker build).
 Merge sur `main` → CD build+push+deploy.
 
+Suivi en temps réel depuis le terminal :
+
+```pwsh
+gh run list --limit 5
+gh run watch              # suit le dernier run en live
+gh run view --log         # logs complets du dernier run
+gh run view <run-id> --log-failed   # uniquement les steps en échec
+```
+
 Vérifie que `https://<fqdn>` sert ta dernière version.
 
 ## Étape 6 — Debug avec Copilot
 
-Si un job échoue, copie les logs dans le Chat :
+Si un job échoue, récupère directement les logs via `gh` et passe-les à Copilot CLI :
+
+```pwsh
+# Capturer les logs dans une variable puis les passer en prompt
+$logs = gh run view --log-failed | Out-String
+gh copilot -p "explain these GitHub Actions failure logs and how to fix:`n$logs"
+```
+
+Ou colle-les dans Copilot Chat :
 
 ```text
 Voici les logs de l'étape "deploy" :
@@ -799,12 +972,23 @@ Crée `.github/workflows/infra.yml` (déclenchement `workflow_dispatch`) qui run
 
 Retrouve l'issue "shopping list" créée au Niveau 4 (ou crée une nouvelle issue, par exemple "Add Microsoft Entra ID authentication").
 
-Dans la section **Assignees** de l'issue, sélectionne **Copilot**.
+Deux façons d'assigner :
 
-Tu peux ajouter un prompt complémentaire :
+**Via l'UI GitHub** : section **Assignees** de l'issue → sélectionne **Copilot**.
 
-```markdown
-Une fois la feature implémentée, génère un test Playwright e2e qui valide le parcours complet et inclus une capture d'écran dans la description de la PR.
+**Via `gh` CLI** :
+
+```pwsh
+gh issue list
+gh issue edit <numero> --add-assignee @copilot
+# ou plus court
+gh issue develop <numero> --assignee @copilot --base main
+```
+
+Tu peux ajouter un prompt complémentaire en commentaire d'issue :
+
+```pwsh
+gh issue comment <numero> --body "Une fois la feature implémentée, génère un test Playwright e2e qui valide le parcours complet et inclus une capture d'écran dans la description de la PR."
 ```
 
 ## Étape 2 — Suivre la progression
@@ -813,6 +997,14 @@ Le Coding Agent crée une PR. Le **premier commit = le plan**. Tu peux commenter
 
 Clique sur **View Session** depuis la PR pour voir Mission Control : actions, fichiers modifiés, commandes lancées, erreurs corrigées.
 
+Depuis le terminal :
+
+```pwsh
+gh pr list --author "app/copilot-swe-agent"
+gh pr view <numero> --comments
+gh pr checks <numero>
+```
+
 > [!TIP]
 > Le Coding Agent peut prendre de quelques minutes à 30+ minutes selon la tâche. **Continue avec le Niveau 8** pendant qu'il bosse.
 
@@ -820,13 +1012,17 @@ Clique sur **View Session** depuis la PR pour voir Mission Control : actions, fi
 
 Une fois la PR prête : review classique. Pour demander une modif, ajoute un commentaire de review **en mentionnant @copilot** :
 
-```markdown
-@copilot Peux-tu retirer le dossier de screenshots qui a été commit par erreur ?
+```pwsh
+gh pr comment <numero> --body "@copilot Peux-tu retirer le dossier de screenshots qui a été commit par erreur ?"
 ```
 
 L'agent reprend, fait les modifs, push.
 
-Quand tu es OK : merge.
+Quand tu es OK :
+
+```pwsh
+gh pr merge <numero> --squash --delete-branch
+```
 
 ---
 
@@ -1077,16 +1273,19 @@ Quand je clique sur une cellule du calendrier, le modal s'ouvre mais déborde su
 
 # Récap & garde-fous
 
-## Les 6 modes Copilot vus
+## Les modes Copilot vus
 
-| Mode                    | Quand l'utiliser                                                  |
-| ----------------------- | ----------------------------------------------------------------- |
-| **Completion**          | Écriture courante de code, propagation locale, doc inline         |
-| **Chat — Ask**          | Comprendre, refactor, générer un bout précis                      |
-| **Chat — Plan**         | Cadrer un gros chantier (rewrite, nouvelle feature transverse)    |
-| **Chat — Agent**        | Exécuter un chantier multi-fichiers, lancer commandes, itérer     |
-| **Coding Agent**        | Déléguer une issue end-to-end sur GitHub.com                      |
-| **Azure SRE Agent**     | Observer la prod, diagnostiquer, remédier                         |
+| Mode                       | Où                          | Quand l'utiliser                                                  |
+| -------------------------- | --------------------------- | ----------------------------------------------------------------- |
+| **Completion**             | IDE                         | Écriture courante de code, propagation locale, doc inline         |
+| **Chat — Ask**             | IDE / github.com            | Comprendre, refactor, générer un bout précis                      |
+| **Chat — Plan**            | IDE                         | Cadrer un gros chantier (rewrite, nouvelle feature transverse)    |
+| **Chat — Agent**           | IDE                         | Exécuter un chantier multi-fichiers, lancer commandes, itérer     |
+| **Copilot CLI** (`gh copilot`) | Terminal                | Générer/expliquer des commandes shell, git, `gh`, `az`, `docker`  |
+| **Code Review**            | PR github.com               | Review automatique d'une PR (best practices, sécu, CodeQL)        |
+| **Copilot Autofix**        | Alertes CodeQL sur PR       | Patch IA automatique pour les vulnérabilités détectées            |
+| **Coding Agent**           | github.com                  | Déléguer une issue end-to-end                                     |
+| **Azure SRE Agent**        | Azure portal                | Observer la prod, diagnostiquer, remédier                         |
 
 ## Patterns de prompts efficaces
 
@@ -1095,12 +1294,14 @@ Quand je clique sur une cellule du calendrier, le modal s'ouvre mais déborde su
 3. Joindre **le bon contexte** : `#file`, `#selection`, `#changes`, `#problems`, `#fetch`.
 4. **One-shot / few-shot** pour imposer un style.
 5. Toujours **vérifier les tests** et les diffs avant `Keep`.
+6. Dans le terminal : `gh copilot -p "..."` pour générer/expliquer une commande, `gh copilot -i` pour un chat interactif.
 
 ## Garde-fous
 
 - **Revue humaine obligatoire** sur tout code généré, surtout sur les routes publiques et l'IaC.
 - **Jamais de secret** (clé, token, mot de passe) dans un prompt ou un commit. Utilise OIDC + Key Vault.
 - **Tests** en premier rempart : un test généré qui passe ne prouve pas que la feature est correcte, mais l'absence de test garantit qu'on régresse.
+- **Autofix ≠ free pass** : toujours relire le patch proposé, surtout pour les vulnérabilités d'authz/business logic où le contexte métier compte.
 - **Coût Azure** : pense à `az group delete -n rg-meal-calendar-dev --yes --no-wait` à la fin du workshop.
 
 ---
@@ -1109,6 +1310,9 @@ Quand je clique sur une cellule du calendrier, le modal s'ouvre mais déborde su
 
 - [github/awesome-copilot](https://github.com/github/awesome-copilot) — prompts, instructions et agents communautaires
 - [Copilot Adventures](https://github.com/microsoft/CopilotAdventures) — petites quêtes ludiques
+- [GitHub CLI manual](https://cli.github.com/manual/) — toutes les commandes `gh`
+- [Using GitHub Copilot in the CLI](https://docs.github.com/copilot/github-copilot-in-the-cli/using-github-copilot-in-the-cli) — doc officielle `gh copilot`
+- [About Copilot Autofix](https://docs.github.com/code-security/code-scanning/managing-code-scanning-alerts/about-autofix-for-codeql-code-scanning) — fonctionnement et limites
 - [Mastering GitHub Copilot for Paired Programming](https://github.com/microsoft/Mastering-GitHub-Copilot-for-Paired-Programming)
 - [Zero2Hero](https://github.com/Azure-Samples/zero2hero)
 - [Writing great agents.md](https://github.blog/ai-and-ml/github-copilot/how-to-write-a-great-agents-md-lessons-from-over-2500-repositories/)

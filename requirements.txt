@@ -1,0 +1,7 @@
+# FastAPI app with Pydantic, uvicorn, pytest and httpx for testing
+fastapi
+pydantic
+uvicorn
+pytest
+httpx
+
