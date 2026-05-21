@@ -1,14 +1,16 @@
-# Abstract base `MealStore` with async methods: list_by_week(year, week), create(meal), update(id, meal), delete(id)
+# Abstract base `MealStore` with async methods: list_by_week(year, week, owner_id), create(meal), update(id, meal), delete(id, owner_id)
 # Concrete `JsonFileStore(MealStore)` reading/writing data/meals.json (create file if missing)
 
 from abc import ABC, abstractmethod
 from typing import List
+from uuid import UUID
 from .models import Meal
 import json
 import os
+
 class MealStore(ABC):
     @abstractmethod
-    async def list_by_week(self, year: int, week: int) -> List[Meal]:
+    async def list_by_week(self, year: int, week: int, owner_id: UUID) -> List[Meal]:
         pass
 
     @abstractmethod
@@ -16,11 +18,11 @@ class MealStore(ABC):
         pass
 
     @abstractmethod
-    async def update(self, id: str, meal: Meal) -> Meal:
+    async def update(self, id: str, meal: Meal, owner_id: UUID) -> Meal:
         pass
 
     @abstractmethod
-    async def delete(self, id: str) -> None:
+    async def delete(self, id: str, owner_id: UUID) -> None:
         pass
     
 class JsonFileStore(MealStore):
@@ -40,9 +42,9 @@ class JsonFileStore(MealStore):
         with open(self.file_path, "w") as f:
             json.dump([meal.model_dump(mode="json") for meal in meals], f, indent=2)
 
-    async def list_by_week(self, year: int, week: int) -> List[Meal]:
+    async def list_by_week(self, year: int, week: int, owner_id: UUID) -> List[Meal]:
         meals = self._read_all()
-        return [meal for meal in meals if meal.date.isocalendar()[:2] == (year, week)]
+        return [meal for meal in meals if meal.date.isocalendar()[:2] == (year, week) and meal.owner_id == owner_id]
 
     async def create(self, meal: Meal) -> Meal:
         meals = self._read_all()
@@ -50,19 +52,20 @@ class JsonFileStore(MealStore):
         self._write_all(meals)
         return meal
 
-    async def update(self, id: str, meal: Meal) -> Meal:
+    async def update(self, id: str, meal: Meal, owner_id: UUID) -> Meal:
         meals = self._read_all()
         for i, existing in enumerate(meals):
-            if str(existing.id) == id:
+            if str(existing.id) == id and existing.owner_id == owner_id:
                 meal.id = existing.id
+                meal.owner_id = owner_id
                 meals[i] = meal
                 self._write_all(meals)
                 return meal
         raise ValueError(f"Meal with id {id} not found")
 
-    async def delete(self, id: str) -> None:
+    async def delete(self, id: str, owner_id: UUID) -> None:
         meals = self._read_all()
-        updated = [m for m in meals if str(m.id) != id]
+        updated = [m for m in meals if not (str(m.id) == id and m.owner_id == owner_id)]
         if len(updated) == len(meals):
             raise ValueError(f"Meal with id {id} not found")
         self._write_all(updated)

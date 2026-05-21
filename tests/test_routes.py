@@ -1,13 +1,18 @@
 from datetime import date
 from unittest.mock import AsyncMock, MagicMock
+from uuid import UUID
 
 import pytest
 from httpx import ASGITransport, AsyncClient
 
 from app.main import app
 from app.models import Meal
-from app.routes import get_store
+from app.routes import get_store, get_owner_id
 from app.storage import JsonFileStore, MealStore
+
+# Test owner ID
+TEST_OWNER_ID = UUID("550e8400-e29b-41d4-a716-446655440000")
+TEST_OWNER_ID_STR = str(TEST_OWNER_ID)
 
 
 @pytest.fixture
@@ -19,6 +24,7 @@ def json_store(tmp_path):
 @pytest.fixture
 def test_app(json_store):
     app.dependency_overrides[get_store] = lambda: json_store
+    app.dependency_overrides[get_owner_id] = lambda: TEST_OWNER_ID
     yield app
     app.dependency_overrides.clear()
 
@@ -26,7 +32,7 @@ def test_app(json_store):
 @pytest.fixture
 async def client(test_app):
     transport = ASGITransport(app=test_app)
-    async with AsyncClient(transport=transport, base_url="http://test") as async_client:
+    async with AsyncClient(transport=transport, base_url="http://test", headers={"X-User-Id": TEST_OWNER_ID_STR}) as async_client:
         yield async_client
 
 
@@ -131,6 +137,59 @@ class TestMealsRoutesCRUD:
         assert response.status_code == 422
         assert "Invalid ISO week" in response.json()["detail"]
 
+    async def test_duplicate_week_copies_meals_with_new_ids(self, client: AsyncClient):
+        source_meal_1 = {
+            "date": "2026-01-06",
+            "slot": "breakfast",
+            "name": "Omelette",
+            "notes": "Fromage",
+            "calories": 420,
+        }
+        source_meal_2 = {
+            "date": "2026-01-08",
+            "slot": "dinner",
+            "name": "Saumon",
+            "notes": "Legumes",
+            "calories": 610,
+        }
+
+        created_1 = (await client.post("/meals/", json=source_meal_1)).json()
+        created_2 = (await client.post("/meals/", json=source_meal_2)).json()
+
+        payload = {
+            "source": {"year": 2026, "week": 2},
+            "target": {"year": 2026, "week": 5},
+        }
+
+        duplicate_response = await client.post("/meals/duplicate-week", json=payload)
+        assert duplicate_response.status_code == 201
+
+        duplicated = duplicate_response.json()
+        assert len(duplicated) == 2
+
+        source_ids = {created_1["id"], created_2["id"]}
+        duplicated_ids = {duplicated[0]["id"], duplicated[1]["id"]}
+        assert source_ids.isdisjoint(duplicated_ids)
+
+        target_meals_response = await client.get("/meals/?year=2026&week=5")
+        assert target_meals_response.status_code == 200
+        target_meals = target_meals_response.json()
+        assert len(target_meals) == 2
+
+        target_names = {meal["name"] for meal in target_meals}
+        assert target_names == {"Omelette", "Saumon"}
+
+    async def test_duplicate_week_rejects_invalid_week(self, client: AsyncClient):
+        payload = {
+            "source": {"year": 2026, "week": 2},
+            "target": {"year": 2021, "week": 53},
+        }
+
+        response = await client.post("/meals/duplicate-week", json=payload)
+
+        assert response.status_code == 422
+        assert "Invalid ISO week" in response.json()["detail"]
+
 
 @pytest.mark.anyio
 async def test_post_meals_calls_store_create_once():
@@ -141,15 +200,16 @@ async def test_post_meals_calls_store_create_once():
         "notes": "Sauce yaourt",
         "calories": 560,
     }
-    meal_to_return = Meal(**payload)
+    meal_to_return = Meal(**payload, owner_id=TEST_OWNER_ID)
 
     mocked_store = MagicMock(spec=MealStore)
     mocked_store.create = AsyncMock(return_value=meal_to_return)
 
     app.dependency_overrides[get_store] = lambda: mocked_store
+    app.dependency_overrides[get_owner_id] = lambda: TEST_OWNER_ID
     try:
         transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with AsyncClient(transport=transport, base_url="http://test", headers={"X-User-Id": TEST_OWNER_ID_STR}) as client:
             response = await client.post("/meals/", json=payload)
 
         assert response.status_code == 201
@@ -158,5 +218,6 @@ async def test_post_meals_calls_store_create_once():
         assert isinstance(created_meal_arg, Meal)
         assert created_meal_arg.name == payload["name"]
         assert created_meal_arg.slot == payload["slot"]
+        assert created_meal_arg.owner_id == TEST_OWNER_ID
     finally:
         app.dependency_overrides.clear()
