@@ -8,6 +8,8 @@ from pydantic import BaseModel, Field
 from typing import Literal, Optional
 from uuid import UUID, uuid4
 from datetime import date
+
+
 class Meal(BaseModel):
     id: UUID = Field(default_factory=uuid4)
     date: date
@@ -15,7 +17,12 @@ class Meal(BaseModel):
     name: str = Field(..., min_length=1, max_length=120)
     notes: Optional[str] = None
     calories: int | None = None
-    
+
+
+class WeekFilter(BaseModel):
+    year: int = Field(..., ge=1, le=9999)
+    week: int = Field(..., ge=1, le=53)
+
 
 # function `validate_iso_date(s: str) -> bool` that returns True if s matches YYYY-MM-DD
 def validate_iso_date(s: str) -> bool:
@@ -28,6 +35,8 @@ def validate_iso_date(s: str) -> bool:
 
 # function `validate_email(s: str) -> bool` (we'll need it later for sharing)
 import re
+
+
 def validate_email(s: str) -> bool:
     email_regex = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
     return re.match(email_regex, s) is not None
