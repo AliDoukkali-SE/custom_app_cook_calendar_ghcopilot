@@ -1,1 +1,52 @@
-[]
+[
+  {
+    "id": "ffd0e84a-b1c4-4a20-bf43-a64f4508a150",
+    "date": "2026-05-18",
+    "slot": "lunch",
+    "name": "Pates carbonara",
+    "notes": null,
+    "calories": null,
+    "ingredients": [
+      {
+        "name": "pates",
+        "quantity": null,
+        "unit": null,
+        "category": "autres"
+      },
+      {
+        "name": "lardons",
+        "quantity": null,
+        "unit": null,
+        "category": "autres"
+      },
+      {
+        "name": "oeufs",
+        "quantity": null,
+        "unit": null,
+        "category": "autres"
+      },
+      {
+        "name": "parmesan",
+        "quantity": null,
+        "unit": null,
+        "category": "autres"
+      }
+    ]
+  },
+  {
+    "id": "31373136-5609-492c-b8d5-088ef9c8c2da",
+    "date": "2026-05-18",
+    "slot": "breakfast",
+    "name": "musli",
+    "notes": null,
+    "calories": null,
+    "ingredients": [
+      {
+        "name": "avoine skir",
+        "quantity": null,
+        "unit": null,
+        "category": "autres"
+      }
+    ]
+  }
+]

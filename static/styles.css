@@ -1,0 +1,122 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: Segoe UI, Tahoma, sans-serif;
+    background: #f6f8fb;
+    color: #1b2533;
+}
+
+header {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+    padding: 1rem;
+    background: #ffffff;
+    border-bottom: 1px solid #dce3ed;
+}
+
+h1 {
+    margin: 0 0.75rem;
+    font-size: 1.25rem;
+}
+
+main {
+    padding: 1rem;
+    display: grid;
+    gap: 1rem;
+}
+
+button {
+    border: 1px solid #b8c5d6;
+    border-radius: 8px;
+    background: #ffffff;
+    padding: 0.45rem 0.75rem;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #f0f4f9;
+}
+
+.calendar-grid {
+    display: grid;
+    grid-template-columns: 120px repeat(7, minmax(120px, 1fr));
+    border: 1px solid #dce3ed;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #ffffff;
+}
+
+.header,
+.slot-label,
+.calendar-cell {
+    border-right: 1px solid #e8edf5;
+    border-bottom: 1px solid #e8edf5;
+    padding: 0.5rem;
+}
+
+.header {
+    font-weight: 600;
+    background: #f5f8fd;
+}
+
+.slot-label {
+    font-weight: 600;
+    background: #f8fbff;
+}
+
+.calendar-cell {
+    min-height: 98px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.meal-name {
+    font-weight: 600;
+    font-size: 0.92rem;
+}
+
+.meal-ingredients {
+    font-size: 0.82rem;
+    color: #4a607a;
+}
+
+.meal-action {
+    margin-top: auto;
+    width: fit-content;
+}
+
+.shopping-list-panel {
+    background: #ffffff;
+    border: 1px solid #dce3ed;
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+}
+
+#shopping-list-items {
+    margin: 0.5rem 0 0;
+}
+
+@media (max-width: 980px) {
+    .calendar-grid {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+        padding-bottom: 0.5rem;
+    }
+
+    .header,
+    .slot-label,
+    .calendar-cell {
+        display: inline-block;
+        vertical-align: top;
+        width: 180px;
+        min-height: 120px;
+        white-space: normal;
+    }
+}

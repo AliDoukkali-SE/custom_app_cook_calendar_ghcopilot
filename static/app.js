@@ -1,7 +1,11 @@
-// Fetch meals for current ISO week from /meals?year=&week=
-// Render in the grid, click a cell to add/edit a meal (prompt-based modal for the POC)
 let currentYear;
 let currentWeek;
+const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+const SLOTS = [
+    { key: "breakfast", label: "Breakfast" },
+    { key: "lunch", label: "Lunch" },
+    { key: "dinner", label: "Dinner" },
+];
 
 document.addEventListener('DOMContentLoaded', async () => {
     const currentDate = new Date();
@@ -56,6 +60,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         alert(`Duplicated ${duplicatedMeals.length} meal(s).`);
     });
 
+    document.getElementById('generate-shopping-list')?.addEventListener('click', async () => {
+        await generateShoppingList();
+    });
+
     await refreshWeek();
 });
 
@@ -80,11 +88,157 @@ async function refreshWeek() {
 
     const meals = await fetchMeals(currentYear, currentWeek);
     if (calendar) {
-        calendar.innerHTML = `<pre>${JSON.stringify(meals, null, 2)}</pre>`;
+        renderCalendarGrid(calendar, meals);
     }
 }
 
-function dateFromIsoWeek(year, week) {
+function renderCalendarGrid(container, meals) {
+    container.innerHTML = '';
+
+    container.appendChild(buildCell('header', 'Slot / Day'));
+    DAYS.forEach((day) => container.appendChild(buildCell('header', day)));
+
+    SLOTS.forEach((slot) => {
+        container.appendChild(buildCell('slot-label', slot.label));
+
+        DAYS.forEach((_, dayIndex) => {
+            const mealDate = dateForIsoDay(currentYear, currentWeek, dayIndex + 1);
+            const dateIso = toISODate(mealDate);
+            const meal = meals.find((m) => m.date === dateIso && m.slot === slot.key);
+
+            const cell = document.createElement('div');
+            cell.className = 'calendar-cell';
+
+            const mealName = document.createElement('div');
+            mealName.className = 'meal-name';
+            mealName.textContent = meal ? meal.name : 'No meal';
+            cell.appendChild(mealName);
+
+            if (meal && Array.isArray(meal.ingredients) && meal.ingredients.length > 0) {
+                const ingredients = document.createElement('div');
+                ingredients.className = 'meal-ingredients';
+                ingredients.textContent = meal.ingredients.map((item) => item.name).join(', ');
+                cell.appendChild(ingredients);
+            }
+
+            const actionButton = document.createElement('button');
+            actionButton.type = 'button';
+            actionButton.className = 'meal-action';
+            actionButton.textContent = meal ? 'Edit meal' : 'Add meal';
+            actionButton.setAttribute('aria-label', `${actionButton.textContent} ${DAYS[dayIndex]}/${slot.label}`);
+            actionButton.addEventListener('click', async () => {
+                await promptAndSaveMeal(dateIso, slot.key, meal || null);
+            });
+            cell.appendChild(actionButton);
+
+            container.appendChild(cell);
+        });
+    });
+}
+
+function buildCell(className, text) {
+    const el = document.createElement('div');
+    el.className = className;
+    el.textContent = text;
+    return el;
+}
+
+function dateForIsoDay(year, week, isoDay) {
+    return dateFromIsoWeek(year, week, isoDay);
+}
+
+function toISODate(value) {
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, '0');
+    const day = String(value.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+function parseIngredientsInput(raw) {
+    if (!raw || !raw.trim()) {
+        return [];
+    }
+    return raw
+        .split(',')
+        .map((entry) => entry.trim())
+        .filter(Boolean)
+        .map((name) => ({ name, category: 'autres' }));
+}
+
+async function promptAndSaveMeal(dateIso, slot, existingMeal) {
+    const defaultName = existingMeal?.name || '';
+    const mealName = prompt('Meal name:', defaultName);
+    if (!mealName || !mealName.trim()) {
+        return;
+    }
+
+    const defaultIngredients = existingMeal?.ingredients?.map((item) => item.name).join(', ') || '';
+    const ingredientsInput = prompt('Ingredients (comma-separated):', defaultIngredients);
+    if (ingredientsInput === null) {
+        return;
+    }
+
+    const payload = {
+        date: dateIso,
+        slot,
+        name: mealName.trim(),
+        notes: existingMeal?.notes ?? null,
+        calories: existingMeal?.calories ?? null,
+        ingredients: parseIngredientsInput(ingredientsInput),
+    };
+
+    const response = await fetch('/meals/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        alert(error.detail || 'Failed to save meal.');
+        return;
+    }
+
+    await refreshWeek();
+}
+
+async function generateShoppingList() {
+    const response = await fetch(`/shopping-list?year=${currentYear}&week=${currentWeek}`);
+    if (!response.ok) {
+        alert('Failed to generate shopping list.');
+        return;
+    }
+
+    const payload = await response.json();
+    const listRoot = document.getElementById('shopping-list-items');
+    const emptyBlock = document.getElementById('shopping-list-empty');
+    if (!listRoot || !emptyBlock) {
+        return;
+    }
+
+    const categories = payload.categories || {};
+    const entries = [];
+    Object.keys(categories).forEach((category) => {
+        (categories[category] || []).forEach((item) => {
+            entries.push(item.name);
+        });
+    });
+
+    listRoot.innerHTML = '';
+    if (entries.length === 0) {
+        emptyBlock.textContent = 'No ingredients found for this week.';
+        return;
+    }
+
+    emptyBlock.textContent = '';
+    entries.forEach((name) => {
+        const li = document.createElement('li');
+        li.textContent = name;
+        listRoot.appendChild(li);
+    });
+}
+
+function dateFromIsoWeek(year, week, isoDay = 1) {
     const simple = new Date(Date.UTC(year, 0, 1 + (week - 1) * 7));
     const dayOfWeek = simple.getUTCDay() || 7;
     if (dayOfWeek <= 4) {
@@ -92,6 +246,7 @@ function dateFromIsoWeek(year, week) {
     } else {
         simple.setUTCDate(simple.getUTCDate() + 8 - dayOfWeek);
     }
+    simple.setUTCDate(simple.getUTCDate() + (isoDay - 1));
     return new Date(simple.getUTCFullYear(), simple.getUTCMonth(), simple.getUTCDate());
 }
 

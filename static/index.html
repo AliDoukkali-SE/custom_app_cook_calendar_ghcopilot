@@ -1,12 +1,10 @@
-<!-- Simple weekly calendar: grid 7 columns (Mon-Sun) x 3 rows (breakfast/lunch/dinner)
-     Header with prev/next week buttons. Loads /static/app.js -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Weekly Meal Calendar</title>
-    <link rel="stylesheet" href="/static/styles.css">
+    <link rel="stylesheet" href="/static/styles.css?v=20260521-1">
 </head>
 <body>
     <header>
@@ -14,10 +12,16 @@
         <h1 id="week-label">Week</h1>
         <button id="next-week">Next Week</button>
         <button id="duplicate-week">Duplicate Week</button>
+        <button id="generate-shopping-list">Generate shopping list</button>
     </header>
     <main>
         <div id="calendar" class="calendar-grid"></div>
+        <section id="shopping-list-panel" class="shopping-list-panel">
+            <h2>Shopping list</h2>
+            <div id="shopping-list-empty">Click "Generate shopping list" to load ingredients.</div>
+            <ul id="shopping-list-items"></ul>
+        </section>
     </main>
-    <script src="/static/app.js"></script>
+    <script src="/static/app.js?v=20260521-1"></script>
 </body>
 </html>

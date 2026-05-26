@@ -732,6 +732,7 @@ On passe au cloud. Cible : **Azure Container Apps** + **Cosmos DB Table API** + 
 
 ## Étape 1 — Dockerfile généré par Copilot
 
+
 Crée `Dockerfile` à la racine et tape :
 
 ```dockerfile
