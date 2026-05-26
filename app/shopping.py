@@ -57,7 +57,7 @@ def _format_ingredient_txt(item: dict) -> str:
         return f"- {name}"
 
     # Determine if quantity should be displayed as integer or float
-    qty_str = str(int(qty)) if qty.is_integer() else str(qty)
+    qty_str = str(int(qty)) if float(qty).is_integer() else str(qty)
 
     if unit is None:
         return f"- {name} x{qty_str}"
