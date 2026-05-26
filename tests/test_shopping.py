@@ -1,8 +1,10 @@
 """Unit tests for shopping list feature."""
-import pytest
 from datetime import date
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 
+from fastapi.testclient import TestClient
+
+from app.main import app
 from app.models import Ingredient, Meal
 from app.shopping import aggregate_ingredients, generate_txt, _format_ingredient_txt
 
@@ -154,9 +156,6 @@ class TestGenerateTxt:
 # ---------------------------------------------------------------------------
 # Integration tests with FastAPI TestClient
 # ---------------------------------------------------------------------------
-
-from fastapi.testclient import TestClient
-from app.main import app
 
 
 def _make_store_mock(meals):
