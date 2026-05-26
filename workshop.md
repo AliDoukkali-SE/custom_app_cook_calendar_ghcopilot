@@ -852,6 +852,45 @@ $after = Invoke-RestMethod -Uri "$base/meals/?year=2026&week=23"
 ($after | Where-Object { $_.id -eq $created.id }) -ne $null   # doit retourner True
 ```
 
+## Étape 5 — Mettre en pause / réactiver l'app
+
+Tant que l'app n'a **pas d'authentification**, elle est exposée publiquement et accessible à n'importe qui. Entre deux sessions du workshop, il est prudent de la **mettre en pause** pour :
+
+- ✋ supprimer la surface d'attaque (plus rien ne tourne et ne répond)
+- 💸 stopper la facturation compute (les replicas tombent à zéro)
+
+> [!NOTE]
+> Les ressources annexes (Cosmos DB serverless, Log Analytics, ACR Basic ~4 €/mois) continuent à facturer un montant négligeable. Pour zéro coût total : `az group delete -n rg-meal-calendar-dev --yes --no-wait`.
+
+### Pause — désactiver la révision active
+
+`az containerapp stop` n'est pas dispo sur toutes les versions de la CLI. La méthode universelle : **désactiver la révision active**.
+
+```pwsh
+# Récupérer la révision active
+$rev = az containerapp revision list -g rg-meal-calendar-dev -n meal-calendar `
+  --query "[?properties.active].name | [0]" -o tsv
+
+# Désactiver → 0 replica, plus de trafic, plus de compute facturé
+az containerapp revision deactivate -g rg-meal-calendar-dev -n meal-calendar --revision $rev
+```
+
+Vérification : `https://<fqdn>` doit renvoyer un **404** (Container Apps répond mais aucune révision active ne sert le trafic).
+
+### Reprise — réactiver la révision
+
+```pwsh
+$rev = az containerapp revision list -g rg-meal-calendar-dev -n meal-calendar `
+  --query "[0].name" -o tsv
+
+az containerapp revision activate -g rg-meal-calendar-dev -n meal-calendar --revision $rev
+```
+
+L'app redevient disponible en quelques secondes sur le même FQDN.
+
+> [!TIP]
+> Une fois l'authentification ajoutée (Niveau 7 / Coding Agent), tu pourras laisser l'app allumée en permanence sans risque d'accès anonyme. En attendant : **désactive systématiquement la révision en fin de session**.
+
 ---
 
 # Niveau 6 — CI/CD GitHub Actions générée par Copilot
