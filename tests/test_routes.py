@@ -5,9 +5,10 @@ from uuid import UUID
 import pytest
 from httpx import ASGITransport, AsyncClient
 
+from app.dependencies import get_owner_id
 from app.main import app
 from app.models import Meal
-from app.routes import get_store, get_owner_id
+from app.routes import get_store
 from app.storage import JsonFileStore, MealStore
 
 # Test owner ID

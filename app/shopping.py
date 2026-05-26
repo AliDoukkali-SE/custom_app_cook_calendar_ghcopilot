@@ -1,6 +1,6 @@
 """Shopping list aggregation logic."""
 from typing import List, Dict
-from .models import Meal, Ingredient
+from .models import Meal
 
 CATEGORIES = ["légumes", "protéines", "féculents", "autres"]
 
