@@ -3,7 +3,7 @@ from fastapi.responses import PlainTextResponse
 from typing import List
 from uuid import UUID
 
-from .models import Meal
+from .models import Meal, MealCreate, MealUpdate
 from .storage import MealStore, JsonFileStore
 from .shopping import aggregate_ingredients, generate_txt
 
@@ -21,18 +21,45 @@ async def list_meals(year: int, week: int, store: MealStore = Depends(get_store)
 
 
 @router.post("/", response_model=Meal, status_code=status.HTTP_201_CREATED)
-async def create_meal(meal: Meal, store: MealStore = Depends(get_store)):
-    return await store.create(meal)
+async def create_meal(meal: MealCreate, store: MealStore = Depends(get_store)):
+    try:
+        return await store.create(Meal(**meal.model_dump()))
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@router.post("/duplicate-week", response_model=List[Meal], status_code=status.HTTP_201_CREATED)
+async def duplicate_week(payload: dict, store: MealStore = Depends(get_store)):
+    try:
+        source = payload["source"]
+        target = payload["target"]
+        return await store.duplicate_week(
+            source_year=int(source["year"]),
+            source_week=int(source["week"]),
+            target_year=int(target["year"]),
+            target_week=int(target["week"]),
+        )
+    except (KeyError, TypeError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail="Invalid payload for duplicate-week") from exc
 
 
 @router.put("/{meal_id}", response_model=Meal)
-async def update_meal(meal_id: UUID, meal: Meal, store: MealStore = Depends(get_store)):
-    return await store.update(str(meal_id), meal)
+async def update_meal(meal_id: UUID, meal: MealUpdate, store: MealStore = Depends(get_store)):
+    try:
+        return await store.update(str(meal_id), Meal(id=meal_id, **meal.model_dump()))
+    except ValueError as exc:
+        detail = str(exc)
+        if "not found" in detail.lower():
+            raise HTTPException(status_code=404, detail=detail) from exc
+        raise HTTPException(status_code=409, detail=detail) from exc
 
 
 @router.delete("/{meal_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_meal(meal_id: UUID, store: MealStore = Depends(get_store)):
-    await store.delete(str(meal_id))
+    try:
+        await store.delete(str(meal_id))
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @shopping_router.get("/")
