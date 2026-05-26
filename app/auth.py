@@ -1,15 +1,46 @@
 from __future__ import annotations
 
+import logging
 import os
-import urllib.parse
+import secrets
 
 import msal
 from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse
 
+logger = logging.getLogger(__name__)
+
 AZURE_CLIENT_ID = os.getenv("AZURE_CLIENT_ID", "")
 AZURE_TENANT_ID = os.getenv("AZURE_TENANT_ID", "")
-SESSION_SECRET = os.getenv("SECRET_KEY", "change-me-in-production")
+
+
+def _resolve_session_secret() -> str:
+    """Return the session signing secret.
+
+    - If SECRET_KEY is set, use it.
+    - If it is missing AND Entra ID is configured (real deployment),
+      raise: signing sessions with a known default would let anyone
+      forge a cookie and impersonate any user.
+    - Otherwise (local dev / tests), generate an ephemeral random key
+      and warn. Sessions will be invalidated on restart.
+    """
+    value = os.getenv("SECRET_KEY")
+    if value:
+        return value
+    if AZURE_CLIENT_ID and AZURE_TENANT_ID:
+        raise RuntimeError(
+            "SECRET_KEY env var is required when Azure Entra ID is configured. "
+            "Generate one with: python -c \"import secrets; print(secrets.token_urlsafe(32))\""
+        )
+    logger.warning(
+        "SECRET_KEY not set; generating an ephemeral key. "
+        "Sessions will be invalidated on every restart. "
+        "Set SECRET_KEY in production."
+    )
+    return secrets.token_urlsafe(32)
+
+
+SESSION_SECRET = _resolve_session_secret()
 
 AUTHORITY = f"https://login.microsoftonline.com/{AZURE_TENANT_ID}"
 SCOPES = ["User.Read"]
@@ -47,11 +78,15 @@ async def login(
     )
 
     if "error" in result:
-        error_msg = result.get("error_description", "Invalid credentials.")
-        return RedirectResponse(
-            f"/login?error={urllib.parse.quote(error_msg)}",
-            status_code=303,
+        # Log the detail server-side; show a generic message to the user
+        # to avoid leaking whether the account exists, requires MFA, etc.
+        logger.warning(
+            "Login failed for %s: %s - %s",
+            username,
+            result.get("error"),
+            result.get("error_description"),
         )
+        return RedirectResponse("/login?error=1", status_code=303)
 
     claims = result.get("id_token_claims") or {}
     request.session["user"] = {

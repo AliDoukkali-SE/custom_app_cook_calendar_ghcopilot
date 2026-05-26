@@ -10,7 +10,13 @@ from .routes import router as meals_router, shopping_router
 
 app = FastAPI()
 
-app.add_middleware(SessionMiddleware, secret_key=SESSION_SECRET)
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=SESSION_SECRET,
+    https_only=True,
+    same_site="lax",
+    max_age=60 * 60,  # 1 hour
+)
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 app.include_router(auth_router)

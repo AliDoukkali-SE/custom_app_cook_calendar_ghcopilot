@@ -126,10 +126,9 @@
     </div>
     <script>
         const params = new URLSearchParams(window.location.search);
-        const error = params.get('error');
-        if (error) {
+        if (params.has('error')) {
             const el = document.getElementById('error-msg');
-            el.textContent = decodeURIComponent(error);
+            el.textContent = 'Invalid email or password. Please try again.';
             el.classList.add('visible');
         }
     </script>
