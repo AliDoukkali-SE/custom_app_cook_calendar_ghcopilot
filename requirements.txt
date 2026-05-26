@@ -6,4 +6,6 @@ pytest
 httpx
 azure-data-tables
 azure-identity
-
+msal
+itsdangerous
+python-multipart

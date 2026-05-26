@@ -12,6 +12,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     currentYear = currentDate.getFullYear();
     currentWeek = getISOWeek(currentDate);
 
+    // Load and display the current user's name
+    try {
+        const meResp = await fetch('/auth/me');
+        if (meResp.status === 401) {
+            window.location.href = '/login';
+            return;
+        }
+        if (meResp.ok) {
+            const user = await meResp.json();
+            const userInfo = document.getElementById('user-info');
+            if (userInfo && user.name) {
+                userInfo.textContent = user.name;
+            }
+        }
+    } catch (_) {
+        // ignore network errors for user info display
+    }
+
     document.getElementById('prev-week')?.addEventListener('click', async () => {
         const monday = dateFromIsoWeek(currentYear, currentWeek);
         monday.setDate(monday.getDate() - 7);
@@ -261,6 +279,10 @@ function getISOWeek(date) {
 async function fetchMeals(year, week) {
     try {
         const response = await fetch(`/meals/?year=${year}&week=${week}`);
+        if (response.status === 401) {
+            window.location.href = '/login';
+            return [];
+        }
         if (!response.ok) {
             console.error('Failed to fetch meals:', response.statusText);
             return [];

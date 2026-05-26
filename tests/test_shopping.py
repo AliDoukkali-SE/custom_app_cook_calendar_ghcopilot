@@ -4,9 +4,12 @@ from unittest.mock import AsyncMock
 
 from fastapi.testclient import TestClient
 
+from app.auth import get_current_user
 from app.main import app
 from app.models import Ingredient, Meal
 from app.shopping import aggregate_ingredients, generate_txt, _format_ingredient_txt
+
+TEST_USER = {"oid": "test-oid", "name": "Test User", "email": "test@example.com"}
 
 
 # ---------------------------------------------------------------------------
@@ -174,6 +177,7 @@ class TestShoppingListEndpoint:
         ]
         from app.routes import get_store
         app.dependency_overrides[get_store] = lambda: _make_store_mock(meals)
+        app.dependency_overrides[get_current_user] = lambda: TEST_USER
         try:
             client = TestClient(app)
             resp = client.get("/shopping-list/?year=2026&week=21")
@@ -189,6 +193,7 @@ class TestShoppingListEndpoint:
     def test_empty_week_returns_empty_categories(self):
         from app.routes import get_store
         app.dependency_overrides[get_store] = lambda: _make_store_mock([])
+        app.dependency_overrides[get_current_user] = lambda: TEST_USER
         try:
             client = TestClient(app)
             resp = client.get("/shopping-list/?year=2026&week=99")
@@ -208,6 +213,7 @@ class TestShoppingListEndpoint:
         ]
         from app.routes import get_store
         app.dependency_overrides[get_store] = lambda: _make_store_mock(meals)
+        app.dependency_overrides[get_current_user] = lambda: TEST_USER
         try:
             client = TestClient(app)
             resp = client.get("/shopping-list/?year=2026&week=21&format=txt")
@@ -231,6 +237,7 @@ class TestShoppingListEndpoint:
         ]
         from app.routes import get_store
         app.dependency_overrides[get_store] = lambda: _make_store_mock(meals)
+        app.dependency_overrides[get_current_user] = lambda: TEST_USER
         try:
             client = TestClient(app)
             resp = client.get("/shopping-list/?year=2026&week=21")
@@ -251,6 +258,7 @@ class TestShoppingListEndpoint:
         ]
         from app.routes import get_store
         app.dependency_overrides[get_store] = lambda: _make_store_mock(meals)
+        app.dependency_overrides[get_current_user] = lambda: TEST_USER
         try:
             client = TestClient(app)
             resp = client.get("/shopping-list/?year=2026&week=21")

@@ -5,6 +5,7 @@ from uuid import UUID
 import pytest
 from httpx import ASGITransport, AsyncClient
 
+from app.auth import get_current_user
 from app.dependencies import get_owner_id
 from app.main import app
 from app.models import Meal
@@ -14,6 +15,7 @@ from app.storage import JsonFileStore, MealStore
 # Test owner ID
 TEST_OWNER_ID = UUID("550e8400-e29b-41d4-a716-446655440000")
 TEST_OWNER_ID_STR = str(TEST_OWNER_ID)
+TEST_USER = {"oid": TEST_OWNER_ID_STR, "name": "Test User", "email": "test@example.com"}
 
 
 @pytest.fixture
@@ -26,6 +28,7 @@ def json_store(tmp_path):
 def test_app(json_store):
     app.dependency_overrides[get_store] = lambda: json_store
     app.dependency_overrides[get_owner_id] = lambda: TEST_OWNER_ID
+    app.dependency_overrides[get_current_user] = lambda: TEST_USER
     yield app
     app.dependency_overrides.clear()
 
@@ -212,6 +215,7 @@ async def test_post_meals_calls_store_create_once():
 
     app.dependency_overrides[get_store] = lambda: mocked_store
     app.dependency_overrides[get_owner_id] = lambda: TEST_OWNER_ID
+    app.dependency_overrides[get_current_user] = lambda: TEST_USER
     try:
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test", headers={"X-User-Id": TEST_OWNER_ID_STR}) as client:

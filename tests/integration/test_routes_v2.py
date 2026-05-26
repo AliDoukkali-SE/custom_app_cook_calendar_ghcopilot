@@ -6,12 +6,14 @@ from uuid import UUID
 import pytest
 from httpx import ASGITransport, AsyncClient
 
+from app.auth import get_current_user
 from app.dependencies import get_owner_id, get_repository
 from app.main import app
 from app.repositories import JsonMealRepository
 
 TEST_OWNER_ID = UUID("550e8400-e29b-41d4-a716-446655440000")
 TEST_OWNER_ID_STR = str(TEST_OWNER_ID)
+TEST_USER = {"oid": TEST_OWNER_ID_STR, "name": "Test User", "email": "test@example.com"}
 
 
 @pytest.fixture
@@ -24,6 +26,7 @@ def json_repository(tmp_path):
 def test_app(json_repository):
     app.dependency_overrides[get_repository] = lambda: json_repository
     app.dependency_overrides[get_owner_id] = lambda: TEST_OWNER_ID
+    app.dependency_overrides[get_current_user] = lambda: TEST_USER
     yield app
     app.dependency_overrides.clear()
 
