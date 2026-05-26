@@ -6,6 +6,7 @@ DO NOT deploy this code — it exists solely for security-scanning validation.
 import os
 from flask import Blueprint, request, jsonify
 from werkzeug.utils import secure_filename
+from werkzeug.utils import secure_filename
 
 vulnerable_bp = Blueprint("vulnerable", __name__)
 
@@ -24,8 +25,12 @@ def read_file():
         return jsonify({"error": "invalid path"}), 400
     if os.path.isabs(file_path):
         return jsonify({"error": "invalid path"}), 400
-
     safe_name = secure_filename(file_path)
+    if not safe_name or safe_name != file_path:
+        return jsonify({"error": "invalid path"}), 400
+
+
+    normalized_candidate = os.path.normpath(os.path.join(base_dir, safe_name))
     if not safe_name or safe_name != file_path:
         return jsonify({"error": "invalid path"}), 400
 
