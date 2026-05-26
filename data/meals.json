@@ -48,5 +48,68 @@
         "category": "autres"
       }
     ]
+  },
+  {
+    "id": "3f44c3c5-20b2-4c5c-9f78-cf2937a354da",
+    "date": "2026-01-06",
+    "slot": "lunch",
+    "name": "Poulet curry",
+    "notes": "Avec du riz",
+    "calories": 650,
+    "ingredients": []
+  },
+  {
+    "id": "12fd3f48-aa7d-46f5-bfdc-6ec5d7a74c90",
+    "date": "2026-02-10",
+    "slot": "dinner",
+    "name": "Pates bolognaise",
+    "notes": "Parmesan",
+    "calories": 780,
+    "ingredients": []
+  },
+  {
+    "id": "c239506c-f8f1-4a61-a39e-25cfdef64c00",
+    "date": "2026-01-06",
+    "slot": "breakfast",
+    "name": "Omelette",
+    "notes": "Fromage",
+    "calories": 420,
+    "ingredients": []
+  },
+  {
+    "id": "40cd1f7d-5123-4eb6-9b53-c0770fd73e16",
+    "date": "2026-01-08",
+    "slot": "dinner",
+    "name": "Saumon",
+    "notes": "Legumes",
+    "calories": 610,
+    "ingredients": []
+  },
+  {
+    "id": "24bc164f-a9df-4548-9c00-2341592c4537",
+    "date": "2026-01-27",
+    "slot": "lunch",
+    "name": "Poulet curry",
+    "notes": "Avec du riz",
+    "calories": 650,
+    "ingredients": []
+  },
+  {
+    "id": "fa1cd079-c9d7-48d8-845e-c7fbcef42f10",
+    "date": "2026-01-27",
+    "slot": "breakfast",
+    "name": "Omelette",
+    "notes": "Fromage",
+    "calories": 420,
+    "ingredients": []
+  },
+  {
+    "id": "4c71a9cb-1e1d-48db-a141-4e96fdbf7b1b",
+    "date": "2026-01-29",
+    "slot": "dinner",
+    "name": "Saumon",
+    "notes": "Legumes",
+    "calories": 610,
+    "ingredients": []
   }
 ]
