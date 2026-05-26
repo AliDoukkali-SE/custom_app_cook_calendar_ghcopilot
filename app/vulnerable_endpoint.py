@@ -15,15 +15,23 @@ def read_file():
     Reads a file requested by the client, constrained to a safe directory.
     """
     body = request.get_json(force=True)
+    if not isinstance(body, dict):
+        return jsonify({"error": "invalid request body"}), 400
+
     file_path = body.get("path", "")
+    if not isinstance(file_path, str) or not file_path:
+        return jsonify({"error": "invalid path"}), 400
+    if os.path.isabs(file_path):
+        return jsonify({"error": "invalid path"}), 400
 
     base_dir = os.path.realpath(os.path.join(os.path.dirname(__file__), "safe_files"))
-    candidate_path = os.path.realpath(os.path.join(base_dir, file_path))
+    normalized_candidate = os.path.normpath(os.path.join(base_dir, file_path))
+    candidate_path = os.path.realpath(normalized_candidate)
 
     if os.path.commonpath([base_dir, candidate_path]) != base_dir:
         return jsonify({"error": "invalid path"}), 400
 
-    with open(candidate_path, "r") as f:
+    with open(candidate_path, "r", encoding="utf-8") as f:
         content = f.read()
 
     return jsonify({"content": content})
