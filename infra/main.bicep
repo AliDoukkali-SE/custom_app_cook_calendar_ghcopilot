@@ -22,7 +22,6 @@ var containerEnvName = 'cae-${appName}-${suffix}'
 var cosmosAccountName = toLower(take('cosmos-${appName}-${suffix}', 44))
 var acrName = toLower(take('acr${sanitizedAppName}${suffix}', 50))
 var containerAppName = 'meal-calendar'
-var acrPullRoleDefinitionId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d')
 var imageName = '${acr.properties.loginServer}/meal-calendar:${imageTag}'
 var cosmosTableEndpoint = 'https://${cosmosAccountName}.table.cosmos.azure.com:443/'
 
@@ -57,7 +56,7 @@ resource acr 'Microsoft.ContainerRegistry/registries@2023-07-01' = {
     name: 'Basic'
   }
   properties: {
-    adminUserEnabled: false
+    adminUserEnabled: true
     publicNetworkAccess: 'Enabled'
   }
 }
@@ -87,6 +86,7 @@ resource cosmos 'Microsoft.DocumentDB/databaseAccounts@2024-05-15' = {
       }
     ]
     enableFreeTier: cosmosEnableFreeTier
+    disableLocalAuth: false
     publicNetworkAccess: 'Enabled'
   }
 }
@@ -123,13 +123,14 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
       registries: [
         {
           server: acr.properties.loginServer
-          identity: 'system'
+          username: acr.listCredentials().username
+          passwordSecretRef: 'acr-password'
         }
       ]
       secrets: [
         {
-          name: 'cosmos-key'
-          value: cosmos.listKeys().primaryMasterKey
+          name: 'acr-password'
+          value: acr.listCredentials().passwords[0].value
         }
       ]
     }
@@ -150,10 +151,6 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
             {
               name: 'COSMOS_TABLE_ENDPOINT'
               value: cosmosTableEndpoint
-            }
-            {
-              name: 'COSMOS_KEY'
-              secretRef: 'cosmos-key'
             }
           ]
         }
@@ -176,15 +173,29 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
   }
 }
 
-resource acrPullAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(acr.id, containerApp.id, acrPullRoleDefinitionId)
-  scope: acr
+output containerAppFqdn string = containerApp.properties.configuration.ingress.fqdn
+output acrLoginServer string = acr.properties.loginServer
+
+// Grant the Container App's managed identity data-plane access to the
+// Cosmos DB for Table account using the built-in
+// "Cosmos DB Built-in Data Contributor" role
+// (00000000-0000-0000-0000-000000000002).
+resource cosmosMealsTable 'Microsoft.DocumentDB/databaseAccounts/tables@2024-05-15' = {
+  parent: cosmos
+  name: 'meals'
   properties: {
-    roleDefinitionId: acrPullRoleDefinitionId
-    principalId: containerApp.identity.principalId
-    principalType: 'ServicePrincipal'
+    resource: {
+      id: 'meals'
+    }
   }
 }
 
-output containerAppFqdn string = containerApp.properties.configuration.ingress.fqdn
-output acrLoginServer string = acr.properties.loginServer
+resource cosmosTableDataContributor 'Microsoft.DocumentDB/databaseAccounts/tableRoleAssignments@2024-12-01-preview' = {
+  parent: cosmos
+  name: guid(cosmos.id, containerApp.id, 'cosmos-table-data-contributor')
+  properties: {
+    roleDefinitionId: '${cosmos.id}/tableRoleDefinitions/00000000-0000-0000-0000-000000000002'
+    principalId: containerApp.identity.principalId
+    scope: cosmos.id
+  }
+}

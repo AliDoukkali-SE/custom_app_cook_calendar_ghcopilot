@@ -1,18 +1,24 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import PlainTextResponse
+from functools import lru_cache
 from typing import List
 from uuid import UUID
 
 from .models import Meal, MealCreate, MealUpdate
-from .storage import MealStore, JsonFileStore
+from .storage import MealStore, create_store_from_env
 from .shopping import aggregate_ingredients, generate_txt
 
 router = APIRouter(prefix="/meals", tags=["meals"])
 shopping_router = APIRouter(prefix="/shopping-list", tags=["shopping"])
 
 
+@lru_cache(maxsize=1)
+def _build_store() -> MealStore:
+    return create_store_from_env()
+
+
 def get_store() -> MealStore:
-    return JsonFileStore()
+    return _build_store()
 
 
 @router.get("/", response_model=List[Meal])

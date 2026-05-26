@@ -763,17 +763,22 @@ Crée `infra/main.bicep`. En mode **Agent** :
 Crée un Bicep main.bicep qui déploie :
 - Log Analytics Workspace
 - Application Insights connecté au Log Analytics
-- Azure Container Registry (Basic, admin disabled)
-- Cosmos DB account avec Table API (serverless, free tier)
+- Azure Container Registry (Basic, admin enabled pour un workshop simple)
+- Cosmos DB account avec Table API (serverless, free tier désactivé par défaut)
 - Container Apps Environment connecté au Log Analytics
 - Container App "meal-calendar" :
   - image paramétrée
   - port 8000
-  - identité managée system-assigned
+  - auth registry via `username/passwordSecretRef` (ACR)
   - variables d'env : APPLICATIONINSIGHTS_CONNECTION_STRING, COSMOS_TABLE_ENDPOINT
-  - secret COSMOS_KEY tiré du Cosmos
-  - role assignment "AcrPull" pour l'identité managée sur l'ACR
+  - identité managée System-Assigned (pour l'auth AAD vers Cosmos)
+  - secret `acr-password` tiré de `acr.listCredentials()`
   - min replicas 0, max 3, scale rule HTTP
+- Table `meals` pré-créée sous le compte Cosmos (`Microsoft.DocumentDB/databaseAccounts/tables@2024-05-15`) — indispensable car le rôle data-plane n'a pas le droit `sqlDatabases/write`.
+- Role assignment data-plane Cosmos Table (`tableRoleAssignments@2024-12-01-preview`) : `Cosmos DB Built-in Data Contributor` (`00000000-0000-0000-0000-000000000002`) octroyé à l'identité managée du Container App, scope = compte Cosmos.
+
+> [!IMPORTANT]
+> Beaucoup de tenants Azure appliquent une policy `CosmosDB_LocalAuth_Modify` qui force `disableLocalAuth=true` sur tout nouveau compte Cosmos. Dans ce cas, l'auth par clé (`COSMOS_KEY`) est rejetée et **seule l'auth Entra ID (managed identity + RBAC data-plane)** fonctionne. C'est aussi la pratique recommandée.
 
 Paramètres : location (default resourceGroup().location), appName, imageTag.
 Outputs : containerAppFqdn, acrLoginServer.
@@ -783,27 +788,33 @@ Vérifie le `what-if` :
 
 ```pwsh
 az login
-az group create -n rg-meal-calendar-dev -l westeurope
+az group create -n rg-meal-calendar-dev -l northeurope
 az deployment group what-if -g rg-meal-calendar-dev -f infra/main.bicep -p appName=mealcalendar imageTag=dev
 ```
 
 ## Étape 3 — Premier déploiement manuel
 
-Build et push (on créera l'ACR avant ou avec un déploiement initial sans le Container App) — pour le POC, on déploie d'abord l'infra "vide" puis on push :
+Flow recommandé : build/push dans ACR d'abord, puis déploiement Bicep.
 
 ```pwsh
-# 1. Déployer l'infra (le Container App va échouer/utiliser une image hello-world au début, c'est OK)
-az deployment group create -g rg-meal-calendar-dev -f infra/main.bicep -p appName=mealcalendar imageTag=dev
-
-# 2. Récupérer l'ACR et push
+# 1. Récupérer l'ACR et build+push l'image depuis le code source
 $acr = az acr list -g rg-meal-calendar-dev --query "[0].name" -o tsv
-az acr login -n $acr
-docker tag meal-calendar:dev "$acr.azurecr.io/meal-calendar:dev"
-docker push "$acr.azurecr.io/meal-calendar:dev"
+az acr build -r $acr -t meal-calendar:dev .
 
-# 3. Re-déployer pour pointer le Container App sur la bonne image
+# 2. Déployer l'infra complète
 az deployment group create -g rg-meal-calendar-dev -f infra/main.bicep -p appName=mealcalendar imageTag=dev
 ```
+
+> [!TIP]
+> Si `westeurope` est en saturation (`AKSCapacityHeavyUsage`) ou qu'un service est déjà provisionné dans une autre région, supprime puis recrée le resource group dans une région stable (ex: `northeurope`) avant de redéployer.
+
+> [!WARNING]
+> Si le déploiement reste bloqué avec `ContainerAppOperationError: Operation expired` ou `ContainerAppOperationInProgress` :
+>
+> ```pwsh
+> az containerapp delete -g rg-meal-calendar-dev -n meal-calendar -y
+> az deployment group create -g rg-meal-calendar-dev -f infra/main.bicep -p appName=mealcalendar imageTag=dev
+> ```
 
 Récupère l'URL :
 
@@ -820,14 +831,26 @@ Mode **Agent** :
 ```text
 Ajoute une nouvelle implémentation `CosmosTableStore(MealStore)` dans app/storage.py
 qui utilise azure-data-tables.
-- Configurable via env vars COSMOS_TABLE_ENDPOINT et COSMOS_KEY
-- Si les vars sont absentes, fallback sur JsonFileStore
+- Configurable via env vars COSMOS_TABLE_ENDPOINT et COSMOS_KEY (clé en option : si elle est absente, utiliser `DefaultAzureCredential()` d'azure-identity pour l'auth Entra ID via managed identity)
+- Si COSMOS_TABLE_ENDPOINT est absent, fallback sur JsonFileStore
 - PartitionKey = f"{year}-W{week:02d}", RowKey = meal id
-- Mets à jour requirements.txt
+- Ne PAS appeler `create_table_if_not_exists` à l'exécution : la table `meals` est pré-créée par le Bicep (le rôle data-plane n'a pas `sqlDatabases/write`)
+- Mets à jour requirements.txt (azure-data-tables, azure-identity)
 - Ajoute des tests unitaires avec un mock du TableClient
 ```
 
-Re-build, re-push, re-deploy et vérifie que la persistance survit à un redémarrage du container.
+Re-build, re-push, re-deploy et vérifie que la persistance survit à un redémarrage du container :
+
+```pwsh
+$base = "https://<fqdn>"
+$payload = @{ date="2026-06-03"; slot="lunch"; name="Probe"; notes=""; calories=420; ingredients=@() } | ConvertTo-Json -Compress
+$created = Invoke-RestMethod -Uri "$base/meals/" -Method Post -ContentType "application/json" -Body $payload
+$rev = az containerapp revision list -g rg-meal-calendar-dev -n meal-calendar --query "[?properties.active].name | [0]" -o tsv
+az containerapp revision restart -g rg-meal-calendar-dev -n meal-calendar --revision $rev
+Start-Sleep -Seconds 25
+$after = Invoke-RestMethod -Uri "$base/meals/?year=2026&week=23"
+($after | Where-Object { $_.id -eq $created.id }) -ne $null   # doit retourner True
+```
 
 ---
 

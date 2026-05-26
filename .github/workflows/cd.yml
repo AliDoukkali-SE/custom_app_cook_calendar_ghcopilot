@@ -1,0 +1,86 @@
+name: CD
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      imageTag:
+        description: "Image tag to deploy (defaults to the current run id)"
+        required: false
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  ACR_NAME: ${{ vars.ACR_NAME }}
+  ACA_NAME: ${{ vars.ACA_NAME }}
+  RG_NAME: ${{ vars.RG_NAME }}
+  IMAGE_NAME: meal-calendar
+
+jobs:
+  build-and-push:
+    name: Build & push image
+    runs-on: ubuntu-latest
+    outputs:
+      image-tag: ${{ steps.compute-tag.outputs.tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Compute image tag
+        id: compute-tag
+        shell: bash
+        run: |
+          if [ -n "${{ inputs.imageTag }}" ]; then
+            echo "tag=${{ inputs.imageTag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${{ github.run_id }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: ACR login
+        run: az acr login --name "$ACR_NAME"
+
+      - name: Build & push image
+        run: |
+          IMAGE="${ACR_NAME}.azurecr.io/${IMAGE_NAME}"
+          TAG="${{ steps.compute-tag.outputs.tag }}"
+          docker build -t "${IMAGE}:${TAG}" -t "${IMAGE}:latest" .
+          docker push "${IMAGE}:${TAG}"
+          docker push "${IMAGE}:latest"
+
+  deploy:
+    name: Deploy to Container Apps
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Update Container App image
+        run: |
+          IMAGE="${ACR_NAME}.azurecr.io/${IMAGE_NAME}:${{ needs.build-and-push.outputs.image-tag }}"
+          az containerapp update \
+            --name "$ACA_NAME" \
+            --resource-group "$RG_NAME" \
+            --image "$IMAGE"
+
+      - name: Show app FQDN
+        run: |
+          az containerapp show \
+            --name "$ACA_NAME" \
+            --resource-group "$RG_NAME" \
+            --query "properties.configuration.ingress.fqdn" -o tsv
