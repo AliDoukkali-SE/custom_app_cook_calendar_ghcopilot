@@ -203,7 +203,7 @@ async function promptAndSaveMeal(dateIso, slot, existingMeal) {
 }
 
 async function generateShoppingList() {
-    const response = await fetch(`/shopping-list?year=${currentYear}&week=${currentWeek}`);
+    const response = await fetch(`/shopping-list/?year=${currentYear}&week=${currentWeek}`);
     if (!response.ok) {
         alert('Failed to generate shopping list.');
         return;
@@ -259,12 +259,17 @@ function getISOWeek(date) {
 }
 
 async function fetchMeals(year, week) {
-    const response = await fetch(`/meals?year=${year}&week=${week}`);
-    if (!response.ok) {
-        console.error('Failed to fetch meals:', response.statusText);
+    try {
+        const response = await fetch(`/meals/?year=${year}&week=${week}`);
+        if (!response.ok) {
+            console.error('Failed to fetch meals:', response.statusText);
+            return [];
+        }
+        return await response.json();
+    } catch (err) {
+        console.error('Failed to fetch meals:', err);
         return [];
     }
-    return await response.json();
 }
 
 async function duplicateWeek(source, target) {

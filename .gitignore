@@ -8,3 +8,7 @@ dist/
 build/
 .venv/
 venv/
+
+.coverage
+coverage.xml
+
