@@ -4,15 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Weekly Meal Calendar</title>
-    <link rel="stylesheet" href="/static/styles.css?v=20260526-2">
+    <link rel="stylesheet" href="/static/styles.css?v=20260527-1">
 </head>
 <body>
-    <header>
-        <button id="prev-week">Previous Week</button>
-        <h1 id="week-label">Week</h1>
-        <button id="next-week">Next Week</button>
-        <button id="duplicate-week">Duplicate Week</button>
-        <button id="generate-shopping-list">Generate shopping list</button>
+    <header class="app-header">
+        <div class="header-left">
+            <button id="prev-week">Previous Week</button>
+            <h1 id="week-label">Week</h1>
+            <button id="next-week">Next Week</button>
+        </div>
+        <div class="header-right">
+            <button id="duplicate-week">Duplicate Week</button>
+            <button id="generate-shopping-list" class="button-primary">Generate shopping list</button>
+        </div>
     </header>
     <main>
         <div id="calendar" class="calendar-grid"></div>
@@ -22,6 +26,6 @@
             <ul id="shopping-list-items"></ul>
         </section>
     </main>
-    <script src="/static/app.js?v=20260526-2"></script>
+    <script src="/static/app.js?v=20260527-1"></script>
 </body>
 </html>
