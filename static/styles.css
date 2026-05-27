@@ -4,86 +4,131 @@
 
 body {
     margin: 0;
-    font-family: Segoe UI, Tahoma, sans-serif;
-    background: #f6f8fb;
-    color: #1b2533;
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(180deg, #f4f7fc 0%, #eef3fb 100%);
+    color: #1c2535;
+    line-height: 1.4;
 }
 
 header {
+    max-width: 1200px;
+    margin: 1.25rem auto 0;
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem;
-    align-items: center;
-    padding: 1rem;
+    justify-content: space-between;
+    gap: 0.75rem;
+    align-items: flex-start;
+    padding: 1rem 1.25rem;
     background: #ffffff;
-    border-bottom: 1px solid #dce3ed;
+    border: 1px solid #dbe3ef;
+    border-radius: 14px;
+    box-shadow: 0 8px 20px rgba(15, 42, 82, 0.06);
+}
+
+.header-left,
+.header-right {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.header-left {
+    flex: 1;
 }
 
 h1 {
-    margin: 0 0.75rem;
+    margin: 0 0.75rem 0 0.5rem;
     font-size: 1.25rem;
+    color: #182234;
+    letter-spacing: 0.02em;
 }
 
 main {
-    padding: 1rem;
+    max-width: 1200px;
+    margin: 1rem auto 1.5rem;
+    padding: 0 0.25rem;
     display: grid;
-    gap: 1rem;
+    gap: 1.1rem;
+    grid-template-columns: 1fr;
 }
 
 button {
-    border: 1px solid #b8c5d6;
-    border-radius: 8px;
+    border: 1px solid #c9d5e5;
+    border-radius: 10px;
     background: #ffffff;
-    padding: 0.45rem 0.75rem;
+    color: #243449;
+    padding: 0.5rem 0.85rem;
+    font-weight: 600;
     cursor: pointer;
+    transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
 }
 
 button:hover {
-    background: #f0f4f9;
+    background: #f3f7fd;
+    border-color: #b8c8de;
+    transform: translateY(-1px);
+}
+
+.button-primary {
+    background: #2a6cf5;
+    color: #ffffff;
+    border-color: #245fda;
+}
+
+.button-primary:hover {
+    background: #235fda;
+    border-color: #1f56c5;
 }
 
 .calendar-grid {
     display: grid;
     grid-template-columns: 120px repeat(7, minmax(120px, 1fr));
-    border: 1px solid #dce3ed;
-    border-radius: 10px;
+    border: 1px solid #dbe3ef;
+    border-radius: 12px;
     overflow: hidden;
     background: #ffffff;
+    box-shadow: 0 8px 20px rgba(15, 42, 82, 0.05);
 }
 
 .header,
 .slot-label,
 .calendar-cell {
-    border-right: 1px solid #e8edf5;
-    border-bottom: 1px solid #e8edf5;
-    padding: 0.5rem;
+    border-right: 1px solid #e7edf7;
+    border-bottom: 1px solid #e7edf7;
+    padding: 0.6rem;
 }
 
 .header {
     font-weight: 600;
-    background: #f5f8fd;
+    background: #f4f8ff;
 }
 
 .slot-label {
     font-weight: 600;
-    background: #f8fbff;
+    background: #f7faff;
 }
 
 .calendar-cell {
-    min-height: 98px;
+    min-height: 104px;
     display: flex;
     flex-direction: column;
     gap: 0.35rem;
+    background: #ffffff;
+}
+
+.calendar-cell:hover {
+    background: #f9fbff;
 }
 
 .meal-name {
     font-weight: 600;
-    font-size: 0.92rem;
+    font-size: 0.94rem;
 }
 
 .meal-ingredients {
     font-size: 0.82rem;
-    color: #4a607a;
+    color: #4c6484;
 }
 
 .meal-action {
@@ -93,16 +138,38 @@ button:hover {
 
 .shopping-list-panel {
     background: #ffffff;
-    border: 1px solid #dce3ed;
-    border-radius: 10px;
-    padding: 0.75rem 1rem;
+    border: 1px solid #dbe3ef;
+    border-radius: 12px;
+    padding: 0.9rem 1rem;
+    box-shadow: 0 8px 20px rgba(15, 42, 82, 0.05);
+}
+
+.shopping-list-panel h2 {
+    margin-top: 0;
+    margin-bottom: 0.6rem;
 }
 
 #shopping-list-items {
     margin: 0.5rem 0 0;
+    padding-left: 1.2rem;
 }
 
 @media (max-width: 980px) {
+    header {
+        margin: 0.75rem 0.75rem 0;
+        padding: 0.85rem 1rem;
+    }
+
+    main {
+        margin: 0.75rem 0.75rem 1rem;
+        grid-template-columns: 1fr;
+        padding: 0;
+    }
+
+    .header-left {
+        width: 100%;
+    }
+
     .calendar-grid {
         display: block;
         overflow-x: auto;
