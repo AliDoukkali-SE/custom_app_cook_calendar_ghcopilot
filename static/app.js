@@ -83,7 +83,7 @@ async function refreshWeek() {
     const calendar = document.getElementById('calendar');
 
     if (weekLabel) {
-        weekLabel.textContent = `Week ${currentWeek}, ${currentYear}`;
+        weekLabel.textContent = formatWeekLabel(currentYear, currentWeek);
     }
 
     const meals = await fetchMeals(currentYear, currentWeek);
@@ -248,6 +248,13 @@ function dateFromIsoWeek(year, week, isoDay = 1) {
     }
     simple.setUTCDate(simple.getUTCDate() + (isoDay - 1));
     return new Date(simple.getUTCFullYear(), simple.getUTCMonth(), simple.getUTCDate());
+}
+
+function formatWeekLabel(year, week) {
+    const monday = dateFromIsoWeek(year, week, 1);
+    const sunday = dateFromIsoWeek(year, week, 7);
+    const fmt = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short' });
+    return `${fmt.format(monday)} - ${fmt.format(sunday)}`;
 }
 
 function getISOWeek(date) {
