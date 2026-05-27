@@ -867,11 +867,10 @@ Tant que l'app n'a **pas d'authentification**, elle est exposée publiquement et
 `az containerapp stop` n'est pas dispo sur toutes les versions de la CLI. La méthode universelle : **désactiver la révision active**.
 
 ```pwsh
-# Récupérer la révision active
+# Récupérer la révision active et la désactiver dans la foulée
 $rev = az containerapp revision list -g rg-meal-calendar-dev -n meal-calendar `
   --query "[?properties.active].name | [0]" -o tsv
-
-# Désactiver → 0 replica, plus de trafic, plus de compute facturé
+if (-not $rev) { throw "Aucune révision active trouvée." }
 az containerapp revision deactivate -g rg-meal-calendar-dev -n meal-calendar --revision $rev
 ```
 
@@ -879,10 +878,14 @@ Vérification : `https://<fqdn>` doit renvoyer un **404** (Container Apps répon
 
 ### Reprise — réactiver la révision
 
-```pwsh
-$rev = az containerapp revision list -g rg-meal-calendar-dev -n meal-calendar `
-  --query "[0].name" -o tsv
+> [!TIP]
+> `$rev` ne survit pas à la fermeture du terminal. Si tu reprends dans un nouveau shell, ré-exécute la commande qui peuple la variable (ci-dessous) — ou passe directement le nom complet de la révision (ex. `meal-calendar--0000005`).
 
+```pwsh
+# Lister les révisions (la plus récente en premier) puis activer la dernière connue
+$rev = az containerapp revision list -g rg-meal-calendar-dev -n meal-calendar `
+  --query "sort_by([], &properties.createdTime)[-1].name" -o tsv
+if (-not $rev) { throw "Aucune révision trouvée." }
 az containerapp revision activate -g rg-meal-calendar-dev -n meal-calendar --revision $rev
 ```
 

@@ -12,6 +12,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     currentYear = currentDate.getFullYear();
     currentWeek = getISOWeek(currentDate);
 
+    // Show signed-in user (Easy Auth). Silently no-op when running unauthenticated (local dev).
+    try {
+        const me = await fetch('/api/me').then((r) => r.ok ? r.json() : null);
+        if (me?.authenticated) {
+            document.getElementById('user-name').textContent = me.name;
+            document.getElementById('user-bar').hidden = false;
+        }
+    } catch (_) { /* ignore */ }
+
     document.getElementById('prev-week')?.addEventListener('click', async () => {
         const monday = dateFromIsoWeek(currentYear, currentWeek);
         monday.setDate(monday.getDate() - 7);

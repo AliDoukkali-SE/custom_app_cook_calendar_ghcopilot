@@ -81,6 +81,32 @@ button:hover {
     border-color: #1f56c5;
 }
 
+.user-bar {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.9rem;
+}
+
+.user-name {
+    color: #1b2533;
+    font-weight: 600;
+}
+
+.sign-out {
+    color: #2451a4;
+    text-decoration: none;
+    padding: 0.4rem 0.7rem;
+    border: 1px solid #b8c5d6;
+    border-radius: 8px;
+    background: #ffffff;
+}
+
+.sign-out:hover {
+    background: #f0f4f9;
+}
+
 .calendar-grid {
     display: grid;
     grid-template-columns: 120px repeat(7, minmax(120px, 1fr));
